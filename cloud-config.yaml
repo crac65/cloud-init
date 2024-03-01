@@ -1,0 +1,112 @@
+#cloud-config
+
+http_proxy: http://yourproxy.nat.you.com:8080/
+ftp_proxy: ftp://yourproxy.nat.you.com:8080/
+https_proxy: https://yourproxy.nat.you.com:8080/
+no_proxy: "localhost,169.254.169.254,.n1test.you.com,.nci.you.com,10.0.0.0/8,127.0.0.1,*.svc,*.cluster.local"
+
+primary:
+    search:
+      - 10.2.123.144
+
+apt:
+##  http_proxy: http://10.2.123.144:8080/
+##  ftp_proxy: ftp://10.2.123.144:8080/
+##  https_proxy: https://10.2.123.144:8080/
+##  HTTPS_PROXY: https://yourproxy.nat.you.com:8080/
+  HTTP_PROXY: http://yourproxy.nat.you.com:8080/
+  http_proxy: http://yourproxy.nat.you.com:8080/
+  https_proxy: https://yourproxy.nat.you.com:8080/
+
+packages:
+       - python3-pexpect
+
+runcmd:
+#Create env profiles
+- echo export no_proxy=localhost,169.254.169.254,.n1test.you.com,.nci.you.com,10.0.0.0/8,127.0.0.1,*.svc,*.cluster.local >> /etc/profile
+- echo export http_proxy=http://yourproxy.nat.you.com:8080 >> /etc/profile
+- echo export https_proxy=http://yourproxy.nat.you.com:8080 >> /etc/profile
+- echo export NO_PROXY=localhost,169.254.169.254,.n1test.you.com,.nci.you.com,10.0.0.0/8,127.0.0.1,*.svc,*.cluster.local >> /etc/profile
+- echo export HTTP_PROXY=http://yourproxy.nat.you.com:8080 >> /etc/profile
+- echo export HTTPS_PROXY=http://yourproxy.nat.you.com:8080 >> /etc/profile
+- echo NO_PROXY=localhost,169.254.169.254,.n1test.you.com,.nci.you.com,10.0.0.0/8,127.0.0.1,*.svc,*.cluster.local >> /etc/environment
+#  wget proxy settings for first boot
+- echo http_proxy=http://yourproxy.nat.you.com:8080 >> /etc/wgetrc
+- echo https_proxy=http://yourproxy.nat.you.com:8080 >> /etc/wgetrc
+- echo no_proxy=localhost,169.254.169.254,.n1test.you.com,.nci.you.com,10.0.0.0/8,127.0.0.1,*.svc,*.cluster.local  >> /etc/wgetrc
+   ## install minio, latest, default # out on next line.
+# - wget https://dl.min.io/server/minio/release/linux-amd64/minio.deb
+- wget https://dl.min.io/server/minio/release/linux-amd64/archive/minio_20240111074616.0.0_amd64.deb -O minio.deb
+- sudo dpkg -i minio.deb
+- sleep 2
+# install mc to runc CLI command to minio
+- wget https://dl.min.io/client/mc/release/linux-amd64/mc
+- chmod +x mc
+- sudo mv mc  /usr/bin/mc
+- sleep 2
+#  install certgen for minio to connect via https to rancher
+- wget https://github.com/minio/certgen/releases/download/v1.2.0/certgen_1.2.0_linux_amd64.deb
+- sudo dpkg -i certgen_1.2.0_linux_amd64.deb
+- sleep 2
+#  set id , password, url, S3 bucket directory, in /etc/default/minio
+- echo 'MINIO_ROOT_USER=admin' > /etc/default/minio
+- echo 'MINIO_ROOT_PASSWORD=test1234' >> /etc/default/minio
+- echo 'MINIO_VOLUMES="/s3"' >> /etc/default/minio
+# remove next line to make port 443 work and replaced MINIO_SERVER_URL with MINIO_ADDRESS, and ran setcap
+# - echo 'MINIO_SERVER_URL=http://localhost:443' >> /etc/default/minio
+- echo 'MINIO_ADDRESS=":443"'  >> /etc/default/minio
+- setcap cap_net_bind_service=+ep /usr/local/bin/minio
+# Add user and give access to s3 directory that was added to config file above.
+- groupadd -r minio-user
+- useradd -m -r -g minio-user minio-user
+- mkdir /s3
+- chown -R  minio-user:minio-user /s3
+# Add cert to minio-user
+- IP=$(hostname -I)
+- sudo certgen -host IP
+- mkdir -p minio-user:minio-user /home/minio-user/.minio/certs
+- mv /private.key /public.crt /home/minio-user/.minio/certs
+- chown minio-user:minio-user /home/minio-user/.minio/certs/*  
+# Start service
+- systemctl enable minio.service
+- sleep 2
+- systemctl restart minio.service
+- sleep 4
+# Ser alisa to s3 to enable command line
+- sleep 1
+- mc alias set caas-s3 http://localhost:443 admin test1234
+# Add bucket=server1 and add access to minio-user
+- mc mb /s3/server1
+- chown -R  minio-user:minio-user /s3
+# Add user=newuser passowrd newpassword
+- mc admin user add caas-s3 newuser newpassword
+- mc admin policy attach caas-s3 readwrite --user newuser
+# LDAP
+- mc idp ldap add caas-s3 \
+   server_addr="b65intldap001.ncttest.you.com:389" \
+   lookup_bind_dn="uid=cas_svc_caas_poc,ou=People,dc=ncttest,dc=you,dc=com" \
+   lookup_bind_password="Yit9-hiR2+cl" \
+   user_dn_search_base_dn="dc=ncttest,dc=you,dc=com" \
+   user_dn_search_filter="(uid=%s)" \
+   tls_skip_verify="on" \
+   server_insecure="on" \
+   server_starttls="on" \
+   comment="Test LDAP server"
+# restart
+- sleep 1
+- sudo systemctl restart minio.service
+- sleep 4
+# add LDA user
+- mc idp ldap policy attach caas-s3 readwrite --user='uid=cas_svc_caas_poc,ou=People,dc=ncttest,dc=you,dc=com'
+# DDbost install  
+# use wget on local file.
+- wget http://repo1.n1test.you.com/files/caas/DDBoostFS_7.12.0.0_1052882_amd64.deb
+- dpkg -i /DDBoostFS_7.12.0.0_1052882_amd64.deb
+- sleep 1
+- cd /opt/emc/boostfs/etc/
+- grep -q -F 'allow-others=true' boostfs.conf || echo 'allow-others=true' >> boostfs.conf
+- sleep 1  
+# Mont Ddboost to a dir
+# in python now
+# - mkdir /mnt/testbackup
+# - /opt/emc/boostfs/bin/boostfs  mount -d b65nc01ddve01 -s stu_caas /mnt/testbackup
