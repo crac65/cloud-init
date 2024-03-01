@@ -83,9 +83,9 @@ runcmd:
 - mc admin policy attach caas-s3 readwrite --user newuser
 # LDAP
 - mc idp ldap add caas-s3 \
-   server_addr="b65intldap001.ncttest.you.com:389" \
-   lookup_bind_dn="uid=cas_svc_caas_poc,ou=People,dc=ncttest,dc=you,dc=com" \
-   lookup_bind_password="Yit9-hiR2+cl" \
+   server_addr="xxxxdap001.ncttest.you.com:389" \
+   lookup_bind_dn="uid=caas_poc,ou=People,dc=ncttest,dc=you,dc=com" \
+   lookup_bind_password="xxxxxxxx" \
    user_dn_search_base_dn="dc=ncttest,dc=you,dc=com" \
    user_dn_search_filter="(uid=%s)" \
    tls_skip_verify="on" \
