@@ -13,14 +13,14 @@ resource "openstack_compute_instance_v2" "basic" {
   name            = "neil_terraform_test_minio"
   image_name      = "focal-server-cloudimg-amd64"
   flavor_name     = "4cpu_8mem_10disk"
-  key_pair        = "willia83"
+  key_pair        = "my_key_on_openstack"
   security_groups = []
   user_data       = "${data.cloudinit_config.minio.rendered}"
 
    
  
   network {
-    name = "nc_vnf_mgmt_cas_dmz_3_pn_1366"
+    name = "nc_vnf_mgmt_xxxx"
   }
 }
 
