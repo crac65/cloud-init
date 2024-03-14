@@ -142,7 +142,7 @@ runcmd:
    EOF
 # Add root cron to copy form minio  /s3 dir to ddbost dir /mnt/testbackup.
 # DDbost Only copy files under 1 day old.
-- (crontab -l 2>/dev/null; echo "10 23 * * * /usr/bin/rclone copy minio:/server1/testx local:/mnt/testbackup --include '*' --max-age 1d") | crontab -
+- (crontab -l 2>/dev/null; echo "10 23 * * * /usr/bin/rclone copy minio:/server1/testx local:/mnt/testbackup --include 'test*' --max-age 1d") | crontab -
 # DDboost del older than 60 days 
  - (crontab -l 2>/dev/null; echo "15 23 * * * /usr/bin/find /mnt/testbackup -type f -mtime +60 -delete") | crontab -
 # End
