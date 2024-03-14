@@ -1,9 +1,9 @@
 #cloud-config
 
-http_proxy: http://yourproxy.nat.you.com:8080/
-ftp_proxy: ftp://yourproxy.nat.you.com:8080/
-https_proxy: https://yourproxy.nat.you.com:8080/
-no_proxy: "localhost,169.254.169.254,.n1test.you.com,.nci.you.com,10.0.0.0/8,127.0.0.1,*.svc,*.cluster.local"
+http_proxy: http://1proxy.test.com:8080/
+ftp_proxy: ftp://1proxy.test.com:8080/
+https_proxy: https://1proxy.test.com:8080/
+no_proxy: "localhost,169.254.169.254,.n1test.test.com,.nci.test.com,10.0.0.0/8,127.0.0.1,*.svc,*.cluster.local"
 
 primary:
     search:
@@ -13,27 +13,29 @@ apt:
 ##  http_proxy: http://10.2.123.144:8080/
 ##  ftp_proxy: ftp://10.2.123.144:8080/
 ##  https_proxy: https://10.2.123.144:8080/
-##  HTTPS_PROXY: https://yourproxy.nat.you.com:8080/
-  HTTP_PROXY: http://yourproxy.nat.you.com:8080/
-  http_proxy: http://yourproxy.nat.you.com:8080/
-  https_proxy: https://yourproxy.nat.you.com:8080/
+##  HTTPS_PROXY: https://1proxy.test.com:8080/
+  HTTP_PROXY: http://1proxy.test.com:8080/
+  http_proxy: http://1proxy.test.com:8080/
+  https_proxy: https://1proxy.test.com:8080/
 
 packages:
        - python3-pexpect
+       - expect
+       - rclone
 
 runcmd:
 #Create env profiles
-- echo export no_proxy=localhost,169.254.169.254,.n1test.you.com,.nci.you.com,10.0.0.0/8,127.0.0.1,*.svc,*.cluster.local >> /etc/profile
-- echo export http_proxy=http://yourproxy.nat.you.com:8080 >> /etc/profile
-- echo export https_proxy=http://yourproxy.nat.you.com:8080 >> /etc/profile
-- echo export NO_PROXY=localhost,169.254.169.254,.n1test.you.com,.nci.you.com,10.0.0.0/8,127.0.0.1,*.svc,*.cluster.local >> /etc/profile
-- echo export HTTP_PROXY=http://yourproxy.nat.you.com:8080 >> /etc/profile
-- echo export HTTPS_PROXY=http://yourproxy.nat.you.com:8080 >> /etc/profile
-- echo NO_PROXY=localhost,169.254.169.254,.n1test.you.com,.nci.you.com,10.0.0.0/8,127.0.0.1,*.svc,*.cluster.local >> /etc/environment
+- echo export no_proxy=localhost,169.22.22.22,.n1test.test.com,.nci.test.com,10.0.0.0/8,127.0.0.1,*.svc,*.cluster.local >> /etc/profile
+- echo export http_proxy=http://1proxy.test.com:8080 >> /etc/profile
+- echo export https_proxy=http://1proxy.test.com:8080 >> /etc/profile
+- echo export NO_PROXY=localhost,169.254.169.254,.n1test.test.com,.nci.test.com,10.0.0.0/8,127.0.0.1,*.svc,*.cluster.local >> /etc/profile
+- echo export HTTP_PROXY=http://1proxy.test.com:8080 >> /etc/profile
+- echo export HTTPS_PROXY=http://1proxy.test.com:8080 >> /etc/profile
+- echo NO_PROXY=localhost,169.254.169.254,.n1test.test.com,.nci.test.com,10.0.0.0/8,127.0.0.1,*.svc,*.cluster.local >> /etc/environment
 #  wget proxy settings for first boot
-- echo http_proxy=http://yourproxy.nat.you.com:8080 >> /etc/wgetrc
-- echo https_proxy=http://yourproxy.nat.you.com:8080 >> /etc/wgetrc
-- echo no_proxy=localhost,169.254.169.254,.n1test.you.com,.nci.you.com,10.0.0.0/8,127.0.0.1,*.svc,*.cluster.local  >> /etc/wgetrc
+- echo http_proxy=http://1proxy.test.com:8080 >> /etc/wgetrc
+- echo https_proxy=http://1proxy.test.com:8080 >> /etc/wgetrc
+- echo no_proxy=localhost,169.254.169.254,.n1test.test.com,.nci.test.com,10.0.0.0/8,127.0.0.1,*.svc,*.cluster.local  >> /etc/wgetrc
    ## install minio, latest, default # out on next line.
 # - wget https://dl.min.io/server/minio/release/linux-amd64/minio.deb
 - wget https://dl.min.io/server/minio/release/linux-amd64/archive/minio_20240111074616.0.0_amd64.deb -O minio.deb
@@ -56,14 +58,19 @@ runcmd:
 # - echo 'MINIO_SERVER_URL=http://localhost:443' >> /etc/default/minio
 - echo 'MINIO_ADDRESS=":443"'  >> /etc/default/minio
 - setcap cap_net_bind_service=+ep /usr/local/bin/minio
-# Add user and give access to s3 directory that was added to config file above.
+# Add minio-user user and grouyp and access to s3 directory that was added, see s3 bucket above.
 - groupadd -r minio-user
 - useradd -m -r -g minio-user minio-user
 - mkdir /s3
 - chown -R  minio-user:minio-user /s3
+# Add cert to root and system, for 10 years
+- certgen -host "127.0.0.1,localhost" -duration 87600h
+- mkdir -p /root/.minio/certs
+- cp /private.key /public.crt /root/.minio/certs
+- cp  /private.key /public.crt  /usr/local/share/ca-certificates
+- update-ca-certificates
+- sleep 1
 # Add cert to minio-user
-- IP=$(hostname -I)
-- sudo certgen -host IP
 - mkdir -p minio-user:minio-user /home/minio-user/.minio/certs
 - mv /private.key /public.crt /home/minio-user/.minio/certs
 - chown minio-user:minio-user /home/minio-user/.minio/certs/*  
@@ -74,19 +81,27 @@ runcmd:
 - sleep 4
 # Ser alisa to s3 to enable command line
 - sleep 1
-- mc alias set caas-s3 http://localhost:443 admin test1234
+# - mc alias set bucket-s3 http://localhost:443 admin test1234
+- |-
+   expect <<EOD
+   spawn /usr/bin/mc alias set bucket-s3 https://localhost:443 admin test1234
+   expect "Confirm public key y/N"
+   send -- "y\r"
+   expect eof
+   EOD
+- sleep 1
 # Add bucket=server1 and add access to minio-user
 - mc mb /s3/server1
 - chown -R  minio-user:minio-user /s3
 # Add user=newuser passowrd newpassword
-- mc admin user add caas-s3 newuser newpassword
-- mc admin policy attach caas-s3 readwrite --user newuser
+- mc admin user add bucket-s3 newuser newpassword
+- mc admin policy attach bucket-s3 readwrite --user newuser
 # LDAP
-- mc idp ldap add caas-s3 \
-   server_addr="xxxxdap001.ncttest.you.com:389" \
-   lookup_bind_dn="uid=caas_poc,ou=People,dc=ncttest,dc=you,dc=com" \
-   lookup_bind_password="xxxxxxxx" \
-   user_dn_search_base_dn="dc=ncttest,dc=you,dc=com" \
+- mc idp ldap add bucket-s3 \
+   server_addr="server001.n2test.test.com:389" \
+   lookup_bind_dn="uid=accountname,ou=People,dc=n2test,dc=google,dc=com" \
+   lookup_bind_password="pass" \
+   user_dn_search_base_dn="dc=n2test,dc=google,dc=com" \
    user_dn_search_filter="(uid=%s)" \
    tls_skip_verify="on" \
    server_insecure="on" \
@@ -97,16 +112,38 @@ runcmd:
 - sudo systemctl restart minio.service
 - sleep 4
 # add LDA user
-- mc idp ldap policy attach caas-s3 readwrite --user='uid=cas_svc_caas_poc,ou=People,dc=ncttest,dc=you,dc=com'
+- mc idp ldap policy attach bucket-s3 readwrite --user='uid=accountname,ou=People,dc=n2test,dc=google,dc=com'
 # DDbost install  
 # use wget on local file.
-- wget http://repo1.n1test.you.com/files/caas/DDBoostFS_7.12.0.0_1052882_amd64.deb
+- wget http://repo1.n1test.test.com/files/files/DDBoostFS_7.12.0.0_1052882_amd64.deb
 - dpkg -i /DDBoostFS_7.12.0.0_1052882_amd64.deb
 - sleep 1
 - cd /opt/emc/boostfs/etc/
 - grep -q -F 'allow-others=true' boostfs.conf || echo 'allow-others=true' >> boostfs.conf
 - sleep 1  
-# Mont Ddboost to a dir
-# in python now
+# next 2 lines now in python script thats runs after this via main.tf
 # - mkdir /mnt/testbackup
-# - /opt/emc/boostfs/bin/boostfs  mount -d b65nc01ddve01 -s stu_caas /mnt/testbackup
+# - /opt/emc/boostfs/bin/boostfs  mount -d backup-server-name -s backup_mount /mnt/testbackup
+#
+# setup rclone
+- mkdir -p /root/.config/rclone
+- |-
+   cat > /root/.config/rclone/rclone.conf << EOF
+   [minio]
+   type = s3
+   provider = Minio
+   access_key_id = admin
+   secret_access_key = test1234
+   endpoint = https://localhost:443
+   env_auth = true
+   [local]
+   type = local
+   EOF
+# Add root cron to copy form minio  /s3 dir to ddbost dir /mnt/testbackup.
+# DDbost Only copy files under 1 day old.
+#  - (crontab -l 2>/dev/null; echo "10 23 * * * /usr/bin/find /s3/   -mtime -1 -exec cp -r -t /mnt/testbackup {}  \;") | crontab -
+- (crontab -l 2>/dev/null; echo "10 23 * * * /usr/bin/rclone copy minio:/server1/testx local:/mnt/testbackup  --max-age 1d") | crontab -
+# - (crontab -l 2>/dev/null; echo "10 23 * * * /usr/bin/find /s3/   -mtime -1 -exec cp -r -t /mnt/testbackup {}  \;") | crontab -
+# DDboost del older than 60 days 
+ - (crontab -l 2>/dev/null; echo "15 23 * * * /usr/bin/find /mnt/testbackup -type f -mtime +60 -delete") | crontab -
+# End
