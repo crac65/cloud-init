@@ -57,6 +57,7 @@ runcmd:
 # remove next line to make port 443 work and replaced MINIO_SERVER_URL with MINIO_ADDRESS, and ran setcap
 # - echo 'MINIO_SERVER_URL=http://localhost:443' >> /etc/default/minio
 - echo 'MINIO_ADDRESS=":443"'  >> /etc/default/minio
+- echo 'MINIO_OPTS="--console-address :9001"'  >> /etc/default/minio
 - setcap cap_net_bind_service=+ep /usr/local/bin/minio
 # Add minio-user user and grouyp and access to s3 directory that was added, see s3 bucket above.
 - groupadd -r minio-user
