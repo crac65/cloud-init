@@ -36,7 +36,7 @@ data "cloudinit_config" "minio" {
   part {
     filename = "script1.py"
     content_type = "text/x-shellscript"
-    content = file("${path.module}/setup-script.py")
+    content = file("${path.module}/hello-script.py")
   }
   part {
     filename = "cloud-config.yaml"
