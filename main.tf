@@ -20,7 +20,7 @@ resource "openstack_compute_instance_v2" "basic" {
    
  
   network {
-    name = "nc_vnf_mgmt_xxxx"
+    name = "n_vnp_mgmt_xxxx"
   }
 }
 
