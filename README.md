@@ -1,7 +1,7 @@
 
 
 
-$${\color{red}Minio \space DDboost \space \color{lightblue}Terrafrom \space \color{lightgreen}{Cloud-init Scrip}}$$	
+$${\color{red}Minio \space DDboost \space \space \color{lightblue}Terrafrom \space \space \color{lightgreen} Cloud-Init \space \space \color{Yellow}Script}$$	
 
 
 
