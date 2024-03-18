@@ -1,4 +1,8 @@
-minio ddboost terrafrom -  cloud-init script
+
+
+
+$${\color{red}Minio \space DDboost \space \color{lightblue}Terrafrom \space \color{lightgreen}{Cloud-init Scrip}}$$	
+
 
 
 info...
