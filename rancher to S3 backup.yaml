@@ -1,0 +1,26 @@
+apiVersion: resources.cattle.io/v1
+kind: Backup
+metadata:
+  name: test-rancker-backup
+  annotations:
+    {}
+    #  key: string
+  labels:
+    {}
+    #  key: string
+spec:
+  resourceSetName: rancher-resource-set
+  retentionCount: 10
+  schedule: 30 2 * * *
+  storageLocation:
+    s3:
+      bucketName: test
+      credentialSecretName: s3-creds 
+      credentialSecretNamespace: default
+      endpoint: 10.10.10.10:443
+      folder: rancher-backup1
+      insecureTLSSkipVerify: true
+#      endpointCA: string
+#      region: string
+#  encryptionConfigSecretName: string
+status:
