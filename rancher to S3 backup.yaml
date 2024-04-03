@@ -1,3 +1,5 @@
+#To add credentialSecretName to rancher run this. Shoud be the S3 storage loginn info.
+#kubectl create secret generic s3-creds  --from-literal=accessKey=admin --from-literal=secretKey=test1234
 apiVersion: resources.cattle.io/v1
 kind: Backup
 metadata:
