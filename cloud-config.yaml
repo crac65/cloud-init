@@ -81,8 +81,6 @@ runcmd:
 - systemctl restart minio.service
 - sleep 4
 # Ser alisa to s3 to enable command line
-- sleep 1
-# - mc alias set bucket-s3 http://localhost:443 admin test1234
 - |-
    expect <<EOD
    spawn /usr/bin/mc alias set bucket-s3 https://localhost:443 admin test1234
@@ -108,8 +106,6 @@ runcmd:
    server_insecure="on" \
    server_starttls="on" \
    comment="Test LDAP server"
-# restart
-- sleep 1
 - sudo systemctl restart minio.service
 - sleep 4
 # add LDA user
